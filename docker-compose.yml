@@ -1,0 +1,15 @@
+version: "3.7"
+services:
+ grid_backend:
+    image: "node:11"
+    user: "node"
+    working_dir: /home/node/app
+    volumes:
+      - ./:/home/node/app
+    ports:
+      - 4545:4545
+    command: > 
+      /bin/bash -c "
+      npm install;
+      npm start;
+      "
