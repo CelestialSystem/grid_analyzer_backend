@@ -27,7 +27,7 @@ router.get('/getData', (req, res, next) => {
         });
       }
       
-      res.send({ users: result });
+      res.send(result);
     } else {
       res.send({ error: 'Max 1 million users can be fetched.' });
     }
@@ -64,7 +64,7 @@ router.get('/getPageData', (req, res, next) => {
       result[j].id = start + j;
     }
     
-    res.send({ users: result });
+    res.send(result);
 });
 
 export default router;
