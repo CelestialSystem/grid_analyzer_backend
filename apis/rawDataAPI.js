@@ -26,23 +26,38 @@ router.get('/getData', (req, res, next) => {
 });
 
 router.post('/getData', (req, res, next) => {
-  const targetSize = parseInt(req.query.size, 10);
-  const filter = parseInt(req.query.filter, 10);
-
-  let result = [];
   const connection = createConnection();
+  let { skip, take, where } = req.body;
+  skip = parseInt(skip, 10);
+  take = parseInt(take, 10);
+  
+  // { requiresCounts: true, skip: 0, take: 20 }
 
   connection.connect((err) => {
     if(err) {
         res.send(err);
     } else {
-      connection.query(`SELECT * FROM celestial_data where id <= ${targetSize}`, ( err, rows, b ) => {
-        res.send({ result: rows, count: 2000 });
-      });  
+      if (where) {
+        const filter = where[0];
+
+        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${filter.field} like "${filter.value}%" LIMIT ${take}`, ( err, rowCounter, b ) => {
+          const rowCount = rowCounter[0].totalCount;
+          connection.query(`SELECT * FROM celestial_data where ${filter.field} like "${filter.value}%" LIMIT ${take} OFFSET ${skip};`, ( err, rows, b ) => {
+            res.send({ result: rows, count: rowCount });
+            connection.end();
+          });
+        });  
+      } else {
+        connection.query(`SELECT * FROM celestial_data where id >= ${skip+1} && id < ${skip + take + 1}`, ( err, rows, b ) => {
+          res.send({ result: rows, count: 1000000 });
+          connection.end();
+        });  
+      }
     }
-    connection.end();
   });
+
 });
+
 
 /**
  * Generates and Sends the raw Data over the client on the basis of direct size.
@@ -152,6 +167,7 @@ router.get('/getKendoUIData', (req, res, next) => {
           res.send(rows);
         });  
       }
+      // connection.end();
   });
 });
 
@@ -167,14 +183,14 @@ router.get('/getPageData', (req, res, next) => {
       page,
   } = req.query;
   
-  const filterVal = JSON.parse(filter)[0];
+  const filterVal = filter ? JSON.parse(filter)[0] : null;
   start = parseInt(start, 10);
   limit = parseInt(limit, 10);
   page = parseInt(page, 10);
 
-  if (limit > 5000) {
+  if (limit > 50000) {
     res.send({
-      error: 'Max Limit is 5000'
+      error: 'Max Limit is 50000'
     })
   }
   const connection = createConnection();
@@ -185,14 +201,15 @@ router.get('/getPageData', (req, res, next) => {
       if (filter) {
         connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit}`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit} OFFSET ${limit * page};`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit} OFFSET ${limit * (page - 1)};`, ( err, rows, b ) => {
             res.send({ users: rows, totalCount: rowCount });
             connection.end();
           });
         });  
       } else {
-        connection.query(`SELECT * FROM celestial_data where id >= ${start} && id < ${start + limit}`, ( err, rows, b ) => {
+        connection.query(`SELECT * FROM celestial_data where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
           res.send({ users: rows, totalCount: 1000000 });
+          connection.end();
         });  
       }
     }
