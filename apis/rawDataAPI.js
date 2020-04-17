@@ -25,6 +25,11 @@ router.get('/getData', (req, res, next) => {
   });
 });
 
+
+/**
+ * For SyncFusion.
+ * @type {[type]}
+ */
 router.post('/getData', (req, res, next) => {
   const connection = createConnection();
   let { skip, take, where } = req.body;
@@ -40,7 +45,7 @@ router.post('/getData', (req, res, next) => {
       if (where) {
         const filter = where[0];
 
-        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${filter.field} like "${filter.value}%" LIMIT ${take}`, ( err, rowCounter, b ) => {
+        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${filter.field} like "${filter.value}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
           connection.query(`SELECT * FROM celestial_data where ${filter.field} like "${filter.value}%" LIMIT ${take} OFFSET ${skip};`, ( err, rows, b ) => {
             res.send({ result: rows, count: rowCount });
@@ -55,7 +60,31 @@ router.post('/getData', (req, res, next) => {
       }
     }
   });
+});
 
+/**
+ * For Kendo UI Buffering.
+ * @type {[type]}
+ */
+router.get('/getDataBuffering', (req, res, next) => {
+  const connection = createConnection();
+
+  let { skip, take, where } = req.query;
+  skip = parseInt(skip, 10);
+  take = parseInt(take, 10);
+  
+  // { requiresCounts: true, skip: 0, take: 20 }
+
+  connection.connect((err) => {
+    if(err) {
+        res.send(err);
+    } else {
+      connection.query(`SELECT * FROM celestial_data where id >= ${skip+1} && id < ${skip + take + 1}`, ( err, rows, b ) => {
+        res.send({ results: rows, count: 1000000 });
+        connection.end();
+      });  
+    }
+  });
 });
 
 
