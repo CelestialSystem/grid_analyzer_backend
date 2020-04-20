@@ -96,23 +96,19 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
   let {
     start,
     pageSize,
+    filter
   } = req.query;
 
-  const filterVal = filter ? JSON.parse(filter)[0] : null;
   start = parseInt(start, 10);
   pageSize = parseInt(pageSize, 10);
 
-  if (limit > 50000) {
-    res.send({
-      error: 'Max Limit is 50000'
-    })
-  }
   const connection = createConnection();
   connection.connect((err) => {
     if(err) {
         res.send(err);
     } else {
       if (filter) {
+        const filterVal = filter ? JSON.parse(filter)[0] : null;
         connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit}`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
           connection.query(`SELECT * FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit} OFFSET ${limit * (page - 1)};`, ( err, rows, b ) => {
@@ -121,7 +117,7 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
           });
         });  
       } else {
-        connection.query(`SELECT * FROM celestial_data where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
+        connection.query(`SELECT * FROM celestial_data where id > ${start} && id <= ${start + pageSize}`, ( err, rows, b ) => {
           res.send({ result: rows, count: 1000000 });
           connection.end();
         });  
