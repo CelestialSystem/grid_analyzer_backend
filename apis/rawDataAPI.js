@@ -62,6 +62,7 @@ router.post('/getData', (req, res, next) => {
   });
 });
 
+
 /**
  * For Kendo UI Buffering.
  * @type {[type]}
@@ -83,6 +84,48 @@ router.get('/getDataBuffering', (req, res, next) => {
         res.send({ results: rows, count: 1000000 });
         connection.end();
       });  
+    }
+  });
+});
+
+/**
+ * Generates and Sends data for Felx Grid Buffered Data.
+ * @type {[type]}
+ */
+router.get('/getFlexGridBufferedData', (req, res, next) => {
+  let {
+    start,
+    pageSize,
+  } = req.query;
+
+  const filterVal = filter ? JSON.parse(filter)[0] : null;
+  start = parseInt(start, 10);
+  pageSize = parseInt(pageSize, 10);
+
+  if (limit > 50000) {
+    res.send({
+      error: 'Max Limit is 50000'
+    })
+  }
+  const connection = createConnection();
+  connection.connect((err) => {
+    if(err) {
+        res.send(err);
+    } else {
+      if (filter) {
+        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit}`, ( err, rowCounter, b ) => {
+          const rowCount = rowCounter[0].totalCount;
+          connection.query(`SELECT * FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit} OFFSET ${limit * (page - 1)};`, ( err, rows, b ) => {
+            res.send({ result: rows, count: rowCount });
+            connection.end();
+          });
+        });  
+      } else {
+        connection.query(`SELECT * FROM celestial_data where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
+          res.send({ result: rows, count: 1000000 });
+          connection.end();
+        });  
+      }
     }
   });
 });
