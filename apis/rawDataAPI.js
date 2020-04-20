@@ -208,38 +208,38 @@ router.get('/getDevExtremeData', (req, res, next) => {
  * @type {[type]}
  */
 router.get('/getKendoUIData', (req, res, next) => {
-  const targetSize = parseInt(req.query.size, 10);
-  const filter = JSON.parse(req.query.filter);
+  console.log(JSON.stringify(req.query));
+  const targetSize = parseInt(req.query.pageSize, 10);
+  const skip = parseInt(req.query.skip, 10);
+  const filter = req.query.filter;
   let result = [];
   const connection = createConnection();
 
   connection.connect((err) => {
-      if(err) {
-          res.send(err);
+    if(err) {
+      res.send(err);
+    } else {
+      if (filter) {
+        const filters = filter.filters[0];
+        const field = filters.field;
+        const value = filters.value;
+
+        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${field}="${value}"`, ( err, rowCounter, b ) => {
+          console.log(rowCounter);
+          const rowCount = rowCounter[0].totalCount;
+          console.log(`SELECT * FROM celestial_data where ${field}="${value}" LIMIT ${targetSize} OFFSET ${skip};`);
+          connection.query(`SELECT * FROM celestial_data where ${field}="${value}" LIMIT ${targetSize} OFFSET ${skip};`, ( err, rows, b ) => {
+            res.send({ users: rows, totalCount: rowCount });
+            connection.end();
+          });
+        });  
       } else {
-        let query = '';
-
-        if (filter) {
-          const field = filter[0];
-          const value = filter[2];
-          const type = filter[1];
-
-          if (type === 'equal') {
-            query = `SELECT * FROM celestial_data where id <= ${targetSize} AND ${field}="${value}"`;
-          } else if (type === 'contains') {
-            
-
-            query = `SELECT * FROM celestial_data where id <= ${targetSize} AND ${field} like "${value}%"`;
-          }
-        } else {
-          query = `SELECT * FROM celestial_data where id <= ${targetSize}`;
-        }
-
-        connection.query(query, ( err, rows, b ) => {
-          res.send(rows);
+        connection.query(`SELECT * FROM celestial_data LIMIT ${targetSize} OFFSET ${skip};`, ( err, rows, b ) => {
+          res.send({ users: rows, totalCount: 1000000 });
+          connection.end();
         });  
       }
-      // connection.end();
+    }
   });
 });
 
