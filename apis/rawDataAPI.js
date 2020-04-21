@@ -127,12 +127,11 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
     } else {
       const filter = req.query.filter;
       if (filter != 'null') {
-        var filterObj = JSON.parse(filter);
-        const field = filterObj.key;
-        const value = filterObj.value;
-        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${field} like "${value}%"`, ( err, rowCounter, b ) => {
+        const filterProp = Object.keys(filter)[0];
+        const value = filter[filterProp];
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${filterProp} like "${value}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM ${tableName} where ${field} like "${value}%" LIMIT ${pageSize} OFFSET ${start}`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where ${filterProp} like "${value}%" LIMIT ${pageSize} OFFSET ${start}`, ( err, rows, b ) => {
             res.send({ result: rows, count: rowCount });
             connection.end();
           });
