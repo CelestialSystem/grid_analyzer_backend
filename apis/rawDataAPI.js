@@ -231,7 +231,7 @@ router.get('/getDevExtremeData', (req, res, next) => {
 router.get('/getKendoUIData', (req, res, next) => {
   const targetSize = parseInt(req.query.pageSize, 10);
   const skip = parseInt(req.query.skip, 10);
-  const tableName = req.query.tableName;
+  let tableName = req.query.tableName;
 
   if (tableName) {
     tableName = "mega_100000";
