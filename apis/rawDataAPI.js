@@ -103,14 +103,12 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
   let {
     start,
     pageSize,
-    filter,
     tableName
   } = req.query;
 
   if (tableName) {
     tableName = "mega_100000";
   }
-
   const count = getCount(tableName);
   start = parseInt(start, 10);
   pageSize = parseInt(pageSize, 10);
@@ -120,13 +118,14 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
     if(err) {
       res.send(err);
     } else {
-      if (filter) {
-        var filter = JSON.parse(filter);
-        const field = filter.key;
-        const value = filter.value;
+      const filter = req.query.filter;
+      if (filter != 'null') {
+        var filterObj = JSON.parse(filter);
+        const field = filterObj.key;
+        const value = filterObj.value;
         connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${field} like "${value}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM ${tableName} where ${field} like "${value}%" LIMIT ${pageSize} OFFSET ${start};`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where ${field} like "${value}%" LIMIT ${pageSize} OFFSET ${start}`, ( err, rows, b ) => {
             res.send({ result: rows, count: rowCount });
             connection.end();
           });
