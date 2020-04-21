@@ -118,15 +118,15 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
   const connection = createConnection();
   connection.connect((err) => {
     if(err) {
-        res.send(err);
+      res.send(err);
     } else {
       if (filter) {
         var filter = JSON.parse(filter);
         const field = filter.key;
         const value = filter.value;
-        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${field} like "${value}%"`, ( err, rowCounter, b ) => {
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${field} like "${value}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM celestial_data where ${field} like "${value}%" LIMIT ${pageSize} OFFSET ${start};`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where ${field} like "${value}%" LIMIT ${pageSize} OFFSET ${start};`, ( err, rows, b ) => {
             res.send({ result: rows, count: rowCount });
             connection.end();
           });
