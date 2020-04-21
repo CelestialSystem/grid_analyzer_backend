@@ -1,5 +1,5 @@
 import express from 'express';
-import { createConnection } from '../helper/sqlHelper';
+import { getCount, createConnection } from '../helper/sqlHelper';
 const router = express.Router();
 
 /**
@@ -9,6 +9,8 @@ const router = express.Router();
 router.get('/getData', (req, res, next) => {
   const targetSize = parseInt(req.query.size, 10);
   const filter = parseInt(req.query.filter, 10);
+  const tableName = req.query.tableName;
+  const count = getCount(tableName);
 
   let result = [];
   const connection = createConnection();
@@ -17,8 +19,8 @@ router.get('/getData', (req, res, next) => {
     if(err) {
         res.send(err);
     } else {
-        connection.query(`SELECT * FROM celestial_data where id <= ${targetSize}`, ( err, rows, b ) => {
-        res.send({ users: rows, totalCount: 1000000 });
+        connection.query(`SELECT * FROM ${tableName} where id <= ${targetSize}`, ( err, rows, b ) => {
+        res.send({ users: rows, totalCount: count });
       });  
     }
     connection.end();
@@ -35,6 +37,8 @@ router.post('/getData', (req, res, next) => {
   let { skip, take, where } = req.body;
   skip = parseInt(skip, 10);
   take = parseInt(take, 10);
+  const tableName = req.query.tableName;
+  const count = getCount(tableName);
   
   // { requiresCounts: true, skip: 0, take: 20 }
 
@@ -45,16 +49,16 @@ router.post('/getData', (req, res, next) => {
       if (where) {
         const filter = where[0];
 
-        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${filter.field} like "${filter.value}%"`, ( err, rowCounter, b ) => {
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${filter.field} like "${filter.value}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM celestial_data where ${filter.field} like "${filter.value}%" LIMIT ${take} OFFSET ${skip};`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where ${filter.field} like "${filter.value}%" LIMIT ${take} OFFSET ${skip};`, ( err, rows, b ) => {
             res.send({ result: rows, count: rowCount });
             connection.end();
           });
         });  
       } else {
-        connection.query(`SELECT * FROM celestial_data where id >= ${skip+1} && id < ${skip + take + 1}`, ( err, rows, b ) => {
-          res.send({ result: rows, count: 1000000 });
+        connection.query(`SELECT * FROM ${tableName} where id >= ${skip+1} && id < ${skip + take + 1}`, ( err, rows, b ) => {
+          res.send({ result: rows, count: count });
           connection.end();
         });  
       }
@@ -69,19 +73,22 @@ router.post('/getData', (req, res, next) => {
  */
 router.get('/getDataBuffering', (req, res, next) => {
   const connection = createConnection();
+  let { skip, take, where, tableName } = req.query;
+  
+  if (tableName) {
+    tableName = "mega_100000";
+  }
 
-  let { skip, take, where } = req.query;
+  const count = getCount(tableName);
   skip = parseInt(skip, 10);
   take = parseInt(take, 10);
-  
-  // { requiresCounts: true, skip: 0, take: 20 }
 
   connection.connect((err) => {
     if(err) {
         res.send(err);
     } else {
-      connection.query(`SELECT * FROM celestial_data where id >= ${skip+1} && id < ${skip + take + 1}`, ( err, rows, b ) => {
-        res.send({ results: rows, count: 1000000 });
+      connection.query(`SELECT * FROM ${tableName} where id >= ${skip+1} && id < ${skip + take + 1}`, ( err, rows, b ) => {
+        res.send({ results: rows, count: count });
         connection.end();
       });  
     }
@@ -96,9 +103,15 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
   let {
     start,
     pageSize,
-    filter
+    filter,
+    tableName
   } = req.query;
 
+  if (tableName) {
+    tableName = "mega_100000";
+  }
+
+  const count = getCount(tableName);
   start = parseInt(start, 10);
   pageSize = parseInt(pageSize, 10);
 
@@ -108,17 +121,17 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
         res.send(err);
     } else {
       if (filter) {
-        const filterVal = filter ? JSON.parse(filter)[0] : null;
-        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit}`, ( err, rowCounter, b ) => {
+        filter = filter ? JSON.parse(JSON.stringify(filter)) : null;
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${filter[0]} like "${filter[1]}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit} OFFSET ${limit * (page - 1)};`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where ${filter[0]} like "${filter[1]}%" LIMIT ${pageSize} OFFSET ${start + pageSize};`, ( err, rows, b ) => {
             res.send({ result: rows, count: rowCount });
             connection.end();
           });
         });  
       } else {
-        connection.query(`SELECT * FROM celestial_data where id > ${start} && id <= ${start + pageSize}`, ( err, rows, b ) => {
-          res.send({ result: rows, count: 1000000 });
+        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + pageSize}`, ( err, rows, b ) => {
+          res.send({ result: rows, count: count });
           connection.end();
         });  
       }
@@ -132,11 +145,18 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
  * @type {[type]}
  */
 router.get('/getFilterDataExtClassic', (req, res, next) => {
-  const targetSize = parseInt(req.query.size, 10);
-  const filter = JSON.parse(req.query.filter)[0];
+  let {
+    size, filter, tableName
+  } = req.query;
 
+  size = parseInt(size, 10);
+  filter = JSON.parse(filter)[0];
+  if (tableName) {
+    tableName = "mega_100000";
+  }
+
+  const count = getCount(tableName);
   const connection = createConnection();
-
   connection.connect((err) => {
     if(err) {
         res.send(err);
@@ -148,12 +168,12 @@ router.get('/getFilterDataExtClassic', (req, res, next) => {
         const value = filter.value;
 
 
-        query = `SELECT * FROM celestial_data where ${field} like "${value}%"`;
+        query = `SELECT * FROM ${tableName} where ${field} like "${value}%"`;
       } else {
-        query = `SELECT * FROM celestial_data where id <= ${targetSize}`;
+        query = `SELECT * FROM ${tableName} where id <= ${size}`;
       }
 
-      connection.query(`SELECT * FROM celestial_data where id <= ${targetSize}`, ( err, rows, b ) => {
+      connection.query(`SELECT * FROM ${tableName} where id <= ${size}`, ( err, rows, b ) => {
         res.send(rows);
       });  
     }
@@ -166,11 +186,17 @@ router.get('/getFilterDataExtClassic', (req, res, next) => {
  * @type {[type]}
  */
 router.get('/getDevExtremeData', (req, res, next) => {
-  const targetSize = parseInt(req.query.size, 10);
-  const filter = JSON.parse(req.query.filter);
-  let result = [];
-  const connection = createConnection();
+  let {
+    size, filter, tableName
+  } = req.query;
 
+  size = parseInt(size, 10);
+
+  if (tableName) {
+    tableName = "mega_100000";
+  }
+
+  const connection = createConnection();
   connection.connect((err) => {
       if(err) {
           res.send(err);
@@ -183,13 +209,12 @@ router.get('/getDevExtremeData', (req, res, next) => {
           const type = filter[1];
 
           if (type === '=') {
-            query = `SELECT * FROM celestial_data where id <= ${targetSize} AND ${field}="${value}"`;
+            query = `SELECT * FROM ${tableName} where id <= ${size} AND ${field}="${value}"`;
           } else if (type === 'contains') {
-
-            query = `SELECT * FROM celestial_data where id <= ${targetSize} AND ${field} like "${value}%"`;
+            query = `SELECT * FROM ${tableName} where id <= ${size} AND ${field} like "${value}%"`;
           }
         } else {
-          query = `SELECT * FROM celestial_data where id <= ${targetSize}`;
+          query = `SELECT * FROM ${tableName} where id <= ${size}`;
         }
 
         connection.query(query, ( err, rows, b ) => {
@@ -204,11 +229,16 @@ router.get('/getDevExtremeData', (req, res, next) => {
  * @type {[type]}
  */
 router.get('/getKendoUIData', (req, res, next) => {
-  console.log(JSON.stringify(req.query));
   const targetSize = parseInt(req.query.pageSize, 10);
   const skip = parseInt(req.query.skip, 10);
+  const tableName = req.query.tableName;
+
+  if (tableName) {
+    tableName = "mega_100000";
+  }
+
+  const count = getCount(tableName);
   const filter = req.query.filter;
-  let result = [];
   const connection = createConnection();
 
   connection.connect((err) => {
@@ -220,18 +250,16 @@ router.get('/getKendoUIData', (req, res, next) => {
         const field = filters.field;
         const value = filters.value;
 
-        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${field}="${value}"`, ( err, rowCounter, b ) => {
-          console.log(rowCounter);
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${field}="${value}"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          console.log(`SELECT * FROM celestial_data where ${field}="${value}" LIMIT ${targetSize} OFFSET ${skip};`);
-          connection.query(`SELECT * FROM celestial_data where ${field}="${value}" LIMIT ${targetSize} OFFSET ${skip};`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where ${field}="${value}" LIMIT ${targetSize} OFFSET ${skip};`, ( err, rows, b ) => {
             res.send({ users: rows, totalCount: rowCount });
             connection.end();
           });
         });  
       } else {
-        connection.query(`SELECT * FROM celestial_data LIMIT ${targetSize} OFFSET ${skip};`, ( err, rows, b ) => {
-          res.send({ users: rows, totalCount: 1000000 });
+        connection.query(`SELECT * FROM ${tableName} LIMIT ${targetSize} OFFSET ${skip};`, ( err, rows, b ) => {
+          res.send({ users: rows, totalCount: count });
           connection.end();
         });  
       }
@@ -249,8 +277,10 @@ router.get('/getPageData', (req, res, next) => {
       limit,
       filter,
       page,
+      tableName
   } = req.query;
   
+  const count = getCount(tableName);
   const filterVal = filter ? JSON.parse(filter)[0] : null;
   start = parseInt(start, 10);
   limit = parseInt(limit, 10);
@@ -267,16 +297,16 @@ router.get('/getPageData', (req, res, next) => {
         res.send(err);
     } else {
       if (filter) {
-        connection.query(`SELECT count(*) as totalCount FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit}`, ( err, rowCounter, b ) => {
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit}`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM celestial_data where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit} OFFSET ${limit * (page - 1)};`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where ${filterVal.property} like "${filterVal.value}%" LIMIT ${limit} OFFSET ${limit * (page - 1)};`, ( err, rows, b ) => {
             res.send({ users: rows, totalCount: rowCount });
             connection.end();
           });
         });  
       } else {
-        connection.query(`SELECT * FROM celestial_data where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
-          res.send({ users: rows, totalCount: 1000000 });
+        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
+          res.send({ users: rows, totalCount: count });
           connection.end();
         });  
       }
