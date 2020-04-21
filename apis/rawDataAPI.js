@@ -99,7 +99,7 @@ router.get('/getDataBuffering', (req, res, next) => {
  * Generates and Sends data for Felx Grid Buffered Data.
  * @type {[type]}
  */
-router.get('/getFlexGridBufferedData', (req, res, next) => {
+router.get('/getWebixGridBufferedData', (req, res, next) => {
   let {
     start,
     count,
