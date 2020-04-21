@@ -102,6 +102,7 @@ router.get('/getDataBuffering', (req, res, next) => {
 router.get('/getFlexGridBufferedData', (req, res, next) => {
   let {
     start,
+    count,
     pageSize,
     filter,
     tableName
@@ -111,9 +112,14 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
     tableName = "mega_100000";
   }
 
-  const count = getCount(tableName);
+  let limit = 0;
+  const tableTotalCount = getCount(tableName);
   start = parseInt(start, 10);
-  pageSize = parseInt(pageSize, 10);
+  if (pageSize) {
+    limit = parseInt(pageSize, 10);
+  } else if (count) {
+    limit = parseInt(count, 10);
+  }
 
   const connection = createConnection();
   connection.connect((err) => {
@@ -121,17 +127,17 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
         res.send(err);
     } else {
       if (filter) {
-        filter = filter ? JSON.parse(JSON.stringify(filter)) : null;
-        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${filter[0]} like "${filter[1]}%"`, ( err, rowCounter, b ) => {
+        const propertyName = Object.getOwnPropertyNames(filter)[0];
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${propertyName} like "${filter[propertyName]}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM ${tableName} where ${filter[0]} like "${filter[1]}%" LIMIT ${pageSize} OFFSET ${start + pageSize};`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where ${propertyName} like "${filter[propertyName]}%" LIMIT ${limit} OFFSET ${start};`, ( err, rows, b ) => {
             res.send({ result: rows, count: rowCount });
             connection.end();
           });
         });  
       } else {
-        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + pageSize}`, ( err, rows, b ) => {
-          res.send({ result: rows, count: count });
+        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
+          res.send({ result: rows, count: tableTotalCount });
           connection.end();
         });  
       }
