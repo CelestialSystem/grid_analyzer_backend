@@ -147,6 +147,57 @@ router.get('/getFlexGridBufferedData', (req, res, next) => {
   });
 });
 
+/**
+ * Generates and Sends data for Felx Grid Buffered Data.
+ * @type {[type]}
+ */
+router.get('/getWijmoGridBufferedData', (req, res, next) => {
+  let {
+    start,
+    count,
+    pageSize,
+    tableName
+  } = req.query;
+
+  if (tableName) {
+    tableName = "mega_100000";
+  }
+
+  let limit = 0;
+  const tableTotalCount = getCount(tableName);
+  start = parseInt(start, 10);
+  if (pageSize) {
+    limit = parseInt(pageSize, 10);
+  } else if (count) {
+    limit = parseInt(count, 10);
+  }
+
+  const connection = createConnection();
+  connection.connect((err) => {
+    if(err) {
+      res.send(err);
+    } else {
+      const filter = req.query.filter;
+      if (filter != 'null') {
+        var filterObj = JSON.parse(filter);
+        const field = filterObj.key;
+        const value = filterObj.value;
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${field} like "${value}%"`, ( err, rowCounter, b ) => {
+          const rowCount = rowCounter[0].totalCount;
+          connection.query(`SELECT * FROM ${tableName} where ${field} like "${value}%" LIMIT ${pageSize} OFFSET ${start}`, ( err, rows, b ) => {
+            res.send({ result: rows, count: rowCount });
+            connection.end();
+          });
+        });  
+      } else {
+        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
+          res.send({ result: rows, count: tableTotalCount });
+          connection.end();
+        });  
+      }
+    }
+  });
+});
 
 /**
  * Generates and Sends the raw Data over the client on the basis of direct size.
