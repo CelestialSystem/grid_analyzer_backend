@@ -136,13 +136,13 @@ router.get('/getWebixGridBufferedData', (req, res, next) => {
       if (filter && filter !== 'null') {
         connection.query(`SELECT count(*) as totalCount FROM ${tableName} where firstname like "${filter}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM ${tableName} where firstname like "${filter}%" LIMIT ${pageSize} OFFSET ${start}`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where firstname like "${filter}%" LIMIT ${limit} OFFSET ${start}`, ( err, rows, b ) => {
             res.send({ result: rows, count: rowCount });
             connection.end();
           });
         });  
       } else {
-        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + pageSize}`, ( err, rows, b ) => {
+        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
           res.send({ result: rows, count: tableTotalCount });
           connection.end();
         });  
