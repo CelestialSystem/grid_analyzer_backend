@@ -111,7 +111,8 @@ router.get('/getWebixGridBufferedData', (req, res, next) => {
     start,
     count,
     pageSize,
-    tableName
+    tableName,
+    filter
   } = req.query;
 
   if (!tableName || tableName === 'undefined') {
@@ -132,19 +133,16 @@ router.get('/getWebixGridBufferedData', (req, res, next) => {
     if(err) {
       res.send(err);
     } else {
-      const filter = req.query.filter;
-      if (filter != 'null') {
-        const filterProp = Object.keys(filter)[0];
-        const value = filter[filterProp];
-        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${filterProp} like "${value}%"`, ( err, rowCounter, b ) => {
+      if (filter && filter !== 'null') {
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where firstname like "${filter}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM ${tableName} where ${filterProp} like "${value}%" LIMIT ${pageSize} OFFSET ${start}`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where firstname like "${filter}%" LIMIT ${pageSize} OFFSET ${start}`, ( err, rows, b ) => {
             res.send({ result: rows, count: rowCount });
             connection.end();
           });
         });  
       } else {
-        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
+        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + pageSize}`, ( err, rows, b ) => {
           res.send({ result: rows, count: tableTotalCount });
           connection.end();
         });  
