@@ -9,8 +9,12 @@ const router = express.Router();
 router.get('/getData', (req, res, next) => {
   const targetSize = parseInt(req.query.size, 10);
   const filter = parseInt(req.query.filter, 10);
-  const tableName = req.query.tableName;
+  let tableName = req.query.tableName;
   const count = getCount(tableName);
+
+  if (!tableName) {
+    tableName = "mega_100000";
+  }
 
   let result = [];
   const connection = createConnection();
@@ -37,10 +41,13 @@ router.post('/getData', (req, res, next) => {
   let { skip, take, where } = req.body;
   skip = parseInt(skip, 10);
   take = parseInt(take, 10);
-  const tableName = req.query.tableName;
+  let tableName = req.query.tableName;
+
+  if (!tableName) {
+    tableName = "mega_100000";
+  }
+
   const count = getCount(tableName);
-  
-  // { requiresCounts: true, skip: 0, take: 20 }
 
   connection.connect((err) => {
     if(err) {
@@ -75,7 +82,7 @@ router.get('/getDataBuffering', (req, res, next) => {
   const connection = createConnection();
   let { skip, take, where, tableName } = req.query;
   
-  if (tableName) {
+  if (!tableName) {
     tableName = "mega_100000";
   }
 
@@ -107,7 +114,7 @@ router.get('/getWebixGridBufferedData', (req, res, next) => {
     tableName
   } = req.query;
 
-  if (tableName) {
+  if (!tableName) {
     tableName = "mega_100000";
   }
 
@@ -158,7 +165,7 @@ router.get('/getWijmoGridBufferedData', (req, res, next) => {
     tableName
   } = req.query;
 
-  if (tableName) {
+  if (!tableName) {
     tableName = "mega_100000";
   }
 
@@ -209,7 +216,7 @@ router.get('/getFilterDataExtClassic', (req, res, next) => {
 
   size = parseInt(size, 10);
   filter = JSON.parse(filter)[0];
-  if (tableName) {
+  if (!tableName) {
     tableName = "mega_100000";
   }
 
@@ -245,14 +252,21 @@ router.get('/getFilterDataExtClassic', (req, res, next) => {
  */
 router.get('/getDevExtremeData', (req, res, next) => {
   let {
-    size, filter, tableName
+    tableName,
+    start,
+    page,
+    limit,
+    filter, 
   } = req.query;
 
-  size = parseInt(size, 10);
+  limit = parseInt(limit, 10);
+  start = parseInt(start, 10);
+  page = parseInt(page, 10);
 
-  if (tableName) {
+  if (!tableName) {
     tableName = "mega_100000";
   }
+  const count = getCount(tableName);
 
   const connection = createConnection();
   connection.connect((err) => {
@@ -262,22 +276,23 @@ router.get('/getDevExtremeData', (req, res, next) => {
         let query = '';
 
         if (filter) {
+          filter = JSON.parse(filter);
           const field = filter[0];
           const value = filter[2];
           const type = filter[1];
-
-          if (type === '=') {
-            query = `SELECT * FROM ${tableName} where id <= ${size} AND ${field}="${value}"`;
-          } else if (type === 'contains') {
-            query = `SELECT * FROM ${tableName} where id <= ${size} AND ${field} like "${value}%"`;
-          }
+          connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${field} like "${value}%"`, ( err, rowCounter, b ) => {
+            const rowCount = rowCounter[0].totalCount;
+            connection.query(`SELECT * FROM ${tableName} where ${field} like "${value}%" LIMIT ${limit} OFFSET ${start}`, ( err, rows, b ) => {
+              res.send({ result: rows, totalCount: rowCount });
+              connection.end();
+            });
+          });  
         } else {
-          query = `SELECT * FROM ${tableName} where id <= ${size}`;
+          connection.query(`SELECT * FROM ${tableName} LIMIT ${limit} OFFSET ${start};`, ( err, rows, b ) => {
+            res.send({ result: rows, totalCount: count });
+            connection.end();
+          });  
         }
-
-        connection.query(query, ( err, rows, b ) => {
-          res.send(rows);
-        });  
       }
   });
 });
@@ -291,7 +306,7 @@ router.get('/getKendoUIData', (req, res, next) => {
   const skip = parseInt(req.query.skip, 10);
   let tableName = req.query.tableName;
 
-  if (tableName) {
+  if (!tableName) {
     tableName = "mega_100000";
   }
 
@@ -308,9 +323,12 @@ router.get('/getKendoUIData', (req, res, next) => {
         const field = filters.field;
         const value = filters.value;
 
+        console.log(new Date().getTime());
         connection.query(`SELECT count(*) as totalCount FROM ${tableName} where ${field}="${value}"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
+          console.log(new Date().getTime());
           connection.query(`SELECT * FROM ${tableName} where ${field}="${value}" LIMIT ${targetSize} OFFSET ${skip};`, ( err, rows, b ) => {
+            console.log(new Date().getTime());
             res.send({ users: rows, totalCount: rowCount });
             connection.end();
           });
@@ -338,7 +356,6 @@ router.get('/getPageData', (req, res, next) => {
       tableName
   } = req.query;
   
-  const count = getCount(tableName);
   const filterVal = filter ? JSON.parse(filter)[0] : null;
   start = parseInt(start, 10);
   limit = parseInt(limit, 10);
@@ -349,6 +366,13 @@ router.get('/getPageData', (req, res, next) => {
       error: 'Max Limit is 50000'
     })
   }
+
+  if (!tableName) {
+    tableName = "mega_100000";
+  }
+
+  const count = getCount(tableName);
+
   const connection = createConnection();
   connection.connect((err) => {
     if(err) {
