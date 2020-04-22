@@ -114,7 +114,7 @@ router.get('/getWebixGridBufferedData', (req, res, next) => {
     tableName
   } = req.query;
 
-  if (!tableName) {
+  if (!tableName || tableName === 'undefined') {
     tableName = "mega_100000";
   }
 
