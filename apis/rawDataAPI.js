@@ -33,6 +33,29 @@ router.get('/getData', (req, res, next) => {
 
 
 /**
+ * Generates and Sends the raw Data over the client on the basis of direct size.
+ * @type {[type]}
+ */
+router.get('/getAllData', (req, res, next) => {
+  const tableName = req.query.tableName;
+
+  let result = [];
+  const connection = createConnection();
+
+  connection.connect((err) => {
+    if(err) {
+        res.send(err);
+    } else {
+        connection.query(`SELECT * FROM ${tableName}`, ( err, rows, b ) => {
+        res.send({ users: rows });
+      });  
+    }
+    connection.end();
+  });
+});
+
+
+/**
  * For SyncFusion.
  * @type {[type]}
  */
