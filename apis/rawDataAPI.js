@@ -174,6 +174,57 @@ router.get('/getWebixGridBufferedData', (req, res, next) => {
   });
 });
 
+
+
+/**
+ * Generates and Sends data for Felx Grid Buffered Data.
+ * @type {[type]}
+ */
+router.get('/getNewWebixGridBufferedData', (req, res, next) => {
+  let {
+    start,
+    count,
+    pageSize,
+    tableName,
+    filter
+  } = req.query;
+
+  if (!tableName || tableName === 'undefined') {
+    tableName = "mega_5000";
+  }
+
+  let limit = 0;
+  const tableTotalCount = getCount(tableName);
+  start = parseInt(start, 10);
+  if (pageSize) {
+    limit = parseInt(pageSize, 10);
+  } else if (count) {
+    limit = parseInt(count, 10);
+  }
+
+  const connection = createConnection();
+  connection.connect((err) => {
+    if(err) {
+      res.send(err);
+    } else {
+      if (filter && filter !== 'null') {
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where firstname like "${filter}%"`, ( err, rowCounter, b ) => {
+          const rowCount = rowCounter[0].totalCount;
+          connection.query(`SELECT * FROM ${tableName} where firstname like "${filter}%" LIMIT ${limit} OFFSET ${start}`, ( err, rows, b ) => {
+            res.send({ data: rows, total_count: rowCount, pos: start });
+            connection.end();
+          });
+        });  
+      } else {
+        connection.query(`SELECT * FROM ${tableName} where id > ${start} && id <= ${start + limit}`, ( err, rows, b ) => {
+          res.send({ data: rows, total_count: tableTotalCount, pos: start });
+          connection.end();
+        });  
+      }
+    }
+  });
+});
+
 /**
  * Generates and Sends data for Felx Grid Buffered Data.
  * @type {[type]}
