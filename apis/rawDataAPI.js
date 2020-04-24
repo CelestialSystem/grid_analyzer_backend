@@ -207,10 +207,10 @@ router.get('/getNewWebixGridBufferedData', (req, res, next) => {
     if(err) {
       res.send(err);
     } else {
-      if (filter && filter !== 'null') {
-        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where firstname like "${filter}%"`, ( err, rowCounter, b ) => {
+      if (filter && filter.firstname) {
+        connection.query(`SELECT count(*) as totalCount FROM ${tableName} where firstname like "${filter.firstname}%"`, ( err, rowCounter, b ) => {
           const rowCount = rowCounter[0].totalCount;
-          connection.query(`SELECT * FROM ${tableName} where firstname like "${filter}%" LIMIT ${limit} OFFSET ${start}`, ( err, rows, b ) => {
+          connection.query(`SELECT * FROM ${tableName} where firstname like "${filter.firstname}%" LIMIT ${limit} OFFSET ${start}`, ( err, rows, b ) => {
             res.send({ data: rows, total_count: rowCount, pos: start });
             connection.end();
           });
