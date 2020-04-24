@@ -195,7 +195,7 @@ router.get('/getNewWebixGridBufferedData', (req, res, next) => {
 
   let limit = 0;
   const tableTotalCount = getCount(tableName);
-  start = parseInt(start, 10);
+  start = parseInt(start, 10) - 1;
   if (pageSize) {
     limit = parseInt(pageSize, 10);
   } else if (count) {
